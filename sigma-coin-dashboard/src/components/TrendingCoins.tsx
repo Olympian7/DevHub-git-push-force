@@ -1,20 +1,23 @@
 import { useEffect, useState } from "react";
 import { fetchLiveCoins } from "../services/cryptoService";
 import { Coin } from "../types";
-import { mockCoins } from "../data/mockData";
 import CoinCard from "./CoinCard";
 import { motion } from "motion/react";
 import { RefreshCw } from "lucide-react";
 
 export default function TrendingCoins() {
-  const [coins, setCoins] = useState<Coin[]>(mockCoins);
+  const [coins, setCoins] = useState<Coin[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const loadData = async () => {
     setLoading(true);
+    setError(null);
     const liveData = await fetchLiveCoins();
     if (liveData.length > 0) {
       setCoins(liveData);
+    } else if (coins.length === 0) {
+      setError("Live market data is temporarily unavailable.");
     }
     setLoading(false);
   };
@@ -43,18 +46,22 @@ export default function TrendingCoins() {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {coins.map((coin, index) => (
-          <motion.div
-            key={coin.id}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: index * 0.1 }}
-          >
-            <CoinCard coin={coin} />
-          </motion.div>
-        ))}
-      </div>
+      {error ? (
+        <div className="glass-card p-6 text-center text-white/60">{error}</div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {coins.map((coin, index) => (
+            <motion.div
+              key={coin.id}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: index * 0.1 }}
+            >
+              <CoinCard coin={coin} />
+            </motion.div>
+          ))}
+        </div>
+      )}
     </section>
   );
 }
