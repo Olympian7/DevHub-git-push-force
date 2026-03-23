@@ -51,3 +51,12 @@ export async function fetchLiveCoins(): Promise<Coin[]> {
     return [];
   }
 }
+
+export async function triggerScrape(): Promise<void> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/coins/scrape`);
+    if (!response.ok) throw new Error("Scrape trigger failed");
+  } catch (error) {
+    console.error("Error triggering scrape:", error);
+  }
+}

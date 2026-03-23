@@ -10,6 +10,17 @@ export interface Coin {
   price: string;
   change24h: number;
   image?: string;
+  scrapedPosts?: ScrapedPost[];
+}
+
+export interface ScrapedPost {
+  platform: "reddit" | "telegram";
+  text: string;
+  coin_ticker: string;
+  engagement: number;
+  sentiment_label: string;
+  sentiment_score: number;
+  timestamp: string;
 }
 
 export interface Alert {

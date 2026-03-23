@@ -12,6 +12,7 @@ export interface Coin {
   price: PositiveNumber;
   change24h: number;
   image?: string;
+  scrapedPosts?: any[];
 }
 
 export type AlertSeverity = "low" | "medium" | "high";
