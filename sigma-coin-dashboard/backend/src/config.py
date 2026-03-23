@@ -1,0 +1,1 @@
+TRACKED_COINS = ["DOGE", "SHIB", "PEPE", "FLOKI", "BONK"]

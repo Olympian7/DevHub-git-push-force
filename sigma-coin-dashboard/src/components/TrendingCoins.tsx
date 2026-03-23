@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { fetchLiveCoins } from "../services/cryptoService";
+import { fetchLiveCoins, triggerScrape } from "../services/cryptoService";
 import { Coin } from "../types";
 import CoinCard from "./CoinCard";
 import { motion } from "motion/react";
@@ -8,11 +8,18 @@ import { RefreshCw } from "lucide-react";
 export default function TrendingCoins() {
   const [coins, setCoins] = useState<Coin[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const loadData = async () => {
+  const loadData = async (forceScrape = false) => {
+    if (forceScrape) setRefreshing(true);
     setLoading(true);
     setError(null);
+
+    if (forceScrape) {
+        await triggerScrape();
+    }
+
     const liveData = await fetchLiveCoins();
     if (liveData.length > 0) {
       setCoins(liveData);
@@ -20,6 +27,7 @@ export default function TrendingCoins() {
       setError("Live market data is temporarily unavailable.");
     }
     setLoading(false);
+    setRefreshing(false);
   };
 
   useEffect(() => {
@@ -37,12 +45,12 @@ export default function TrendingCoins() {
           <p className="text-white/40">Real-time hype tracking across social and market data.</p>
         </div>
         <button 
-          onClick={loadData}
-          disabled={loading}
+          onClick={() => loadData(true)}
+          disabled={loading || refreshing}
           className="flex items-center gap-2 text-accent-blue text-sm font-semibold hover:underline disabled:opacity-50"
         >
-          <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
-          Refresh Live Data
+          <RefreshCw size={14} className={loading || refreshing ? "animate-spin" : ""} />
+          {refreshing ? "Triggering AI Scrapers..." : "Refresh Live Data"}
         </button>
       </div>
 

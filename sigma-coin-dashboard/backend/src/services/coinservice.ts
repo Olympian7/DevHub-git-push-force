@@ -23,6 +23,16 @@ let cachedCoins: Coin[] | null = null;
 let lastFetchMs = 0;
 let hasLiveSnapshot = false;
 
+// Store social sentiment scores (0-100) indexed by ticker
+const socialSentimentCache: Record<string, number> = {};
+const socialPostsCache: Record<string, any[]> = {};
+
+export function updateSocialData(ticker: string, score: number, posts: any[]) {
+  const symbol = ticker.toUpperCase();
+  socialSentimentCache[symbol] = score;
+  socialPostsCache[symbol] = posts.slice(0, 2); // Store latest 2 posts
+}
+
 function jitterSentiment(base: number): ReturnType<typeof toSentimentScore> {
   const offset = randomIntInRange(-SENTIMENT_JITTER, SENTIMENT_JITTER);
   return toSentimentScore(clamp(base + offset, 0, 100));
@@ -30,21 +40,31 @@ function jitterSentiment(base: number): ReturnType<typeof toSentimentScore> {
 
 function toTrend(change24h: number | undefined): Coin["trend"] {
   if (typeof change24h !== "number") return "Stable";
-  if (change24h >= 2) return "Spike";
-  if (change24h <= -2) return "Drop";
+  if (change24h >= 1.5) return "Spike";  // Bullish price action
+  if (change24h <= -1.5) return "Drop";   // Bearish price action
   return "Stable";
 }
 
 function toSignal(sentiment: number): Coin["signal"] {
-  if (sentiment >= 67) return "Buy";
-  if (sentiment <= 33) return "Sell";
+  // New adjusted bounds:
+  // >= 60 is Buy
+  // <= 40 is Sell
+  if (sentiment >= 63) return "Buy";
+  if (sentiment <= 40) return "Sell";
   return "Hold";
 }
 
-function toBoundedSentiment(change24h: number | undefined): ReturnType<typeof toSentimentScore> {
-  // Maps 24h % change to a sentiment baseline then adds light jitter.
-  const base = typeof change24h === "number" ? 50 + change24h * 2 : 50;
-  return jitterSentiment(clamp(Math.round(base), 0, 100));
+function toBoundedSentiment(symbol: string, change24h: number | undefined): ReturnType<typeof toSentimentScore> {
+  const priceBase = typeof change24h === "number" ? 50 + change24h * 2 : 50;
+  const socialScore = socialSentimentCache[symbol.toUpperCase()];
+
+  // If we have social data, we blend it 20/80 with price data
+  let finalBase = priceBase;
+  if (socialScore !== undefined) {
+    finalBase = (priceBase * 0.2) + (socialScore * 0.8);
+  }
+
+  return jitterSentiment(clamp(Math.round(finalBase), 0, 100));
 }
 
 interface CoinGeckoMarketItem {
@@ -71,17 +91,18 @@ async function fetchFromCoinGecko(): Promise<Coin[]> {
   return data
     .filter((item) => Number(item.current_price) > 0)
     .map((item): Coin => {
-      const sentiment = toBoundedSentiment(item.price_change_percentage_24h);
+      const sentiment = toBoundedSentiment(item.symbol, item.price_change_percentage_24h);
       return {
         id: `cg_${item.id}`,
         name: item.name,
         symbol: item.symbol.toUpperCase(),
         price: toPositiveNumber(Number(item.current_price)),
         change24h: Number((item.price_change_percentage_24h ?? 0).toFixed(2)),
-        trend: toTrend(item.price_change_percentage_24h),
         sentiment,
+        trend: toTrend(item.price_change_percentage_24h),
         signal: toSignal(sentiment),
         image: item.image,
+        scrapedPosts: socialPostsCache[item.symbol.toUpperCase()] || [],
       };
     });
 }
@@ -118,16 +139,17 @@ async function fetchFromCoinCap(): Promise<Coin[]> {
     })
     .filter((x) => Number.isFinite(x.price) && x.price > 0)
     .map((x): Coin => {
-      const sentiment = toBoundedSentiment(x.change24h);
+      const sentiment = toBoundedSentiment(x.item.symbol, x.change24h);
       return {
         id: `cc_${x.item.id}`,
         name: x.item.name,
         symbol: x.item.symbol.toUpperCase(),
         price: toPositiveNumber(x.price),
         change24h: Number((x.change24h ?? 0).toFixed(2)),
-        trend: toTrend(x.change24h),
         sentiment,
+        trend: toTrend(x.change24h),
         signal: toSignal(sentiment),
+        scrapedPosts: socialPostsCache[x.item.symbol.toUpperCase()] || [],
       };
     });
 }
