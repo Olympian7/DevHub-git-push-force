@@ -78,3 +78,19 @@ export interface DashboardSnapshot {
   insights: ReadonlyArray<Insight>;
   generatedAt: Date;
 }
+
+export type TrendLabel = "Up" | "Down" | "Stable";
+
+export interface PredictionPoint {
+  timestamp: string; // ISO
+  price: number;
+  sentiment: number;
+}
+
+export interface PredictionResult {
+  predictedPrice: number;
+  trend: TrendLabel;
+  confidence: number; // 0-1
+  historical: PredictionPoint[];
+  predictedSeries: PredictionPoint[];
+}

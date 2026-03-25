@@ -31,3 +31,19 @@ export interface ChartData {
   sentiment: number;
   volume: number;
 }
+
+export type PredictionTrend = "Up" | "Down" | "Stable";
+
+export interface PredictionPoint {
+  timestamp: string;
+  price: number;
+  sentiment: number;
+}
+
+export interface PredictionResult {
+  predictedPrice: number;
+  trend: PredictionTrend;
+  confidence: number;
+  historical: PredictionPoint[];
+  predictedSeries: PredictionPoint[];
+}
